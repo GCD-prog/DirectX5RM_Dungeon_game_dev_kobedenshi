@@ -128,12 +128,6 @@ void KeyControl(void)
 BOOL RenderFrame(void)
 {
 
-	char lpt[20];  // midi リピート
-	mciSendString("status bgm mode", lpt, sizeof(lpt), NULL);
-	if(strcmp(lpt, "stopped") == 0){
-		mciSendString("play bgm from 0", NULL, 0, NULL);
-	}
-
 	if ( lpPrimary->IsLost() == DDERR_SURFACELOST )		lpPrimary->Restore();
 
 		RECT Scrrc={0, 0, 640, 480};   //画面のサイズ
@@ -274,7 +268,9 @@ LRESULT APIENTRY WndFunc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		// Escキーでプログラムを終了します
 		if(wParam == VK_ESCAPE){
 
+			// dsound.cpp
 			ShutdownDirectSound();
+			// sound.cpp
 			StopBackgroundMusic();
 
 			//画面モードを元に戻す
@@ -293,7 +289,10 @@ LRESULT APIENTRY WndFunc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 	case WM_DESTROY:
 
+			// dsound.cpp
 			ShutdownDirectSound();
+
+			// sound.cpp midi_file
 			StopBackgroundMusic();
 
 			lpScreen->Release();
@@ -304,6 +303,7 @@ LRESULT APIENTRY WndFunc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 		break;
 
+	// sound.cpp midi_file
 	// BGMが停止すると、そのことが通知されます
 	// "play"コマンドを再実行します
 	case MM_MCINOTIFY:
@@ -546,13 +546,13 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpszCmdParam, int nCm
 		// フロントクリッピングプレーンを非常に近くに設定します
 		lpD3DRMView->SetFront(0.5f);
 
-		// ナビゲーションシステムを初期化します
+		// nav.cpp ナビゲーションシステムを初期化します (座標処理 これがないと移動できない)
 		SetupNavigator();		
 
-		// シーンを作成します
+		// scene.cpp 本プログラムの3Dオブジェクトの呼び出し, シーンを作成します
 		BuildScene();
 
-		// シーンが描画された後、BGMを開始します
+		// sound.cpp シーンが描画された後、BGM(midi)を開始します
 		StartBackgroundMusic(hwnd);
 
 		while(1){
@@ -565,6 +565,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpszCmdParam, int nCm
 						DispatchMessage(&msg);
 					}else{
 
+							// ゲームループ
 							RenderFrame();
 
 					}

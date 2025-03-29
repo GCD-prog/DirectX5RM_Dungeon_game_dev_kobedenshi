@@ -79,7 +79,30 @@ BOOL SetRenderingOptions(void)
 
 	// シェーディングモードを照明なしのフラットに設定します
 	lpD3DRMDevice->SetQuality(D3DRMRENDER_UNLITFLAT);
-								  
+
+/*
+	//アンビエント光源を配置
+	LPDIRECT3DRMLIGHT lpD3DRMLightAmbient;
+	
+	lpDirect3DRM->CreateLightRGB(D3DRMLIGHT_AMBIENT, D3DVAL(5.0), D3DVAL(5.0), D3DVAL(5.0), &lpD3DRMLightAmbient);
+	lpD3DRMScene->AddLight(lpD3DRMLightAmbient);
+	lpD3DRMLightAmbient->Release();
+
+	LPDIRECT3DRMFRAME lpD3DRMLightFrame;
+	lpDirect3DRM->CreateFrame(lpD3DRMScene, &lpD3DRMLightFrame);
+	
+	//ポイント光源を配置
+	LPDIRECT3DRMLIGHT lpD3DRMLightPoint;
+
+	lpDirect3DRM->CreateLightRGB(D3DRMLIGHT_POINT, D3DVAL(0.9), D3DVAL(0.9), D3DVAL(0.9), &lpD3DRMLightPoint);
+	
+	lpD3DRMLightFrame->SetPosition(lpD3DRMScene, D3DVAL(10.0), D3DVAL(0.0), D3DVAL(0.0));
+	lpD3DRMLightFrame->AddLight(lpD3DRMLightPoint);
+
+	lpD3DRMLightPoint->Release();
+
+	lpD3DRMLightFrame->Release();
+*/
 	// 成功を示すTRUEを返します
 	return TRUE;
 }

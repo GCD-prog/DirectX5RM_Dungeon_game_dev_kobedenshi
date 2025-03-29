@@ -15,8 +15,8 @@ struct GoldLocations
 	BOOL bFound;
 };
 
-// 関数のプロトタイプ
-void SetupNavigator(void);
+// 関数のプロトタイプ nav.cpp
+void SetupNavigator(void);	// ナビゲーションシステム
 float TurnLeft(void);
 float TurnRight(void);
 float SwingLeft(void);

@@ -3,6 +3,7 @@
 // sound.cpp‚ÉŠÜ‚Ü‚ê‚éŒø‰Ê‰¹‚Æ‰¹Šy—p‚ÌŠÖ”‚ÌéŒ¾
 ///////////////////////////////////////////////////////////////////////////////
 
+// sound.cpp
 void StartBackgroundMusic(HWND hWnd);
 void StopBackgroundMusic(void);
 void ReplayBackgroundMusic(HWND hWnd);

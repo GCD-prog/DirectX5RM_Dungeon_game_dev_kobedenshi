@@ -40,7 +40,6 @@ GUID* D3D_GuidSearch(HWND hwnd);
 // DirectDraw デバイスの列挙と選定
 BOOL CALLBACK DDEnumCallback(GUID FAR* lpGUID, LPSTR lpDriverDesc, LPSTR lpDriverName, LPVOID lpContext);
 
-
 // メッシュなどを作りシーンを作成します
 BOOL BuildScene(void);
 
