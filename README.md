@@ -33,4 +33,4 @@
 #
 #In the Properties window, select the Compatibility tab, and there you will find an option called "Use Legacy Display ICC Color Management."
 #
-# Check this option, click Apply, and run the program.
+#Check this option, click Apply, and run the program.
