@@ -75,12 +75,13 @@ LPDIRECT3DRMFRAME lpDungeonFrame = NULL;			// ダンジョンを入れるフレーム
 BOOL SetRenderingOptions(void)
 {
 	// シーンの背景を黒に設定します
-	lpD3DRMScene->SetSceneBackground(D3DRGB(0,0,0));
+//	lpD3DRMScene->SetSceneBackground(D3DRGB(0,0,0));
 
 	// シェーディングモードを照明なしのフラットに設定します
-	lpD3DRMDevice->SetQuality(D3DRMRENDER_UNLITFLAT);
+//	lpD3DRMDevice->SetQuality(D3DRMRENDER_UNLITFLAT);	// 初期設定
 
-/*
+	lpD3DRMDevice->SetQuality(D3DRMLIGHT_ON | D3DRMFILL_SOLID | D3DRMSHADE_GOURAUD);	// 改造
+
 	//アンビエント光源を配置
 	LPDIRECT3DRMLIGHT lpD3DRMLightAmbient;
 	
@@ -102,7 +103,7 @@ BOOL SetRenderingOptions(void)
 	lpD3DRMLightPoint->Release();
 
 	lpD3DRMLightFrame->Release();
-*/
+
 	// 成功を示すTRUEを返します
 	return TRUE;
 }

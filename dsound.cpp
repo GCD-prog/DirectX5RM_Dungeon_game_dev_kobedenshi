@@ -112,11 +112,10 @@ BOOL bSetupBufferFromWave(LPDIRECTSOUNDBUFFER& pDSBuffer, char *szWaveFile)
 	pcmwf.wf.nBlockAlign = wfmtx.nBlockAlign;
 	pcmwf.wf.nAvgBytesPerSec = wfmtx.nAvgBytesPerSec;
 	pcmwf.wBitsPerSample = wfmtx.wBitsPerSample;
-	
 
 	memset(&dsbdesc, 0, sizeof(DSBUFFERDESC));
 	dsbdesc.dwSize = sizeof(DSBUFFERDESC);
-	dsbdesc.dwFlags = DSBCAPS_CTRLDEFAULT;
+	dsbdesc.dwFlags = DSBCAPS_CTRLDEFAULT;		// DirectX7では使わない DirectX6以下のときに記述。
 	dsbdesc.dwBufferBytes = child.cksize;			
 	dsbdesc.lpwfxFormat = (LPWAVEFORMATEX)&pcmwf;
 

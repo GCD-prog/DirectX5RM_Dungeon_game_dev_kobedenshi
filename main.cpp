@@ -35,55 +35,75 @@ LPDIRECT3DRMFRAME lpD3DRMCamera = NULL;
 
 char szDevice[128], szDDDeviceName[128] = "default";
 
+#define MAX_DRIVERS 5                   // 検出するドライバの最大数
+static GUID DriverGUID[MAX_DRIVERS];     // ドライバのGUIDを格納する配列
+static char DriverName[MAX_DRIVERS][50]; // ドライバ名を格納する配列
+static int  NumDrivers = 0;             // 検出されたドライバの数 (初期値0)
+static int  CurrDriver = -1;            // 現在選択されているドライバのインデックス (初期値-1)
+static int  BPP = 16;                   // 画面の色深度 (16bitに設定)
+
 int nScore = 0;			// 得点
 int nPossible = 10;		// 可能な最高点
 
 void FrameCnt(void)
 {
-	     static int cnt;
-		 static DWORD Nowtime,Prevtime;
-		 static char text0[10];
-		 static char Data[256];
+		static int cnt;
+		static DWORD Nowtime,Prevtime;
+		static char text0[10];		// FPSカウント数
+		static char text1[10];		// nScore 得点
+		static char text2[10];		// nPossible 可能な最高点
+		static char text_d3d_device[150] = "";
+		static char text_dd_device[150] = "";
 
-		 HDC hdc;
-		 cnt++;
-		 Nowtime = timeGetTime();
+		HDC hdc;
+		cnt++;
+		Nowtime = timeGetTime();
 		 if((Nowtime - Prevtime) >= 1000){
-			 Prevtime = Nowtime;
-			 wsprintf(text0,"%d fps", cnt);
-			 cnt = 0;
-		 }
-	
-		 sprintf(Data, "%s , [%s]", szDevice, szDDDeviceName);
+			Prevtime = Nowtime;
+			wsprintf(text0,"%d fps", cnt);
+			cnt = 0;
+		}
 
-		 // 開発時のみ表示する
-		 lpBackbuffer->GetDC(&hdc);
-		 TextOut(hdc, 0, 0, text0, strlen(text0));
-		 TextOut(hdc, 200, 100, Data, strlen(Data));
-		 lpBackbuffer->ReleaseDC(hdc);
+		wsprintf(text1,"%d 得点", nScore);
+		wsprintf(text2,"%d 最高点", nPossible);
+
+		// デバイス名表示用の文字列を作成
+		sprintf(text_d3d_device, "D3D Dev: %s", szDevice);
+		sprintf(text_dd_device, "DD Dev : [%s]", szDDDeviceName);
+
+		// 開発時のみ表示する
+		lpBackbuffer->GetDC(&hdc);
+		TextOut(hdc, 0, 0, text0, strlen(text0));		// FPSカウント数
+		TextOut(hdc, 50, 0, text1, strlen(text1));		// nScore 得点
+		TextOut(hdc, 100, 0, text2, strlen(text2));	// nPossible 可能な最高点
+
+		TextOut(hdc, 0, 80, text_d3d_device, strlen(text_d3d_device));   // Direct3Dデバイス名
+		TextOut(hdc, 0, 100, text_dd_device, strlen(text_dd_device));    // DirectDrawデバイス名
+
+		lpBackbuffer->ReleaseDC(hdc);
 }
 
 void KeyControl(void)
 {
-	//処理を書き込む
+	// 処理を書き込む
 
-	//このプログラムはメモ書き、ここの位置では使わない。
+	// このプログラムはメモ書き、ここの位置では使わない。
 	// プレーヤーの位置に合わせてカメラの位置を更新します
-	//lpD3DRMCamera->AddRotation(D3DRMCOMBINE_REPLACE, 0.0f, 1.0f, 0.0f,fGetAngle());
-	//lpD3DRMCamera->SetPosition(lpD3DRMScene, fGetXPos(), 1.5f, fGetZPos());
-	//この座標位置の変数の値がとれていないから移動しないのでは？
+	// lpD3DRMCamera->AddRotation(D3DRMCOMBINE_REPLACE, 0.0f, 1.0f, 0.0f,fGetAngle());
+	// lpD3DRMCamera->SetPosition(lpD3DRMScene, fGetXPos(), 1.5f, fGetZPos());
+	// この座標位置の変数の値がとれていないから移動しないのでは？
 
-	//左旋回
+	// 左旋回
 	if( (GetAsyncKeyState(VK_LEFT)&0x8000) || (GetAsyncKeyState('Q')&0x8000) ){
 			TurnLeft();
 	}
 
-	//右旋回
+	// 右旋回
 	if( (GetAsyncKeyState(VK_RIGHT)&0x8000) || (GetAsyncKeyState('E')&0x8000) ){
 			TurnRight();
 	}
 
-	//前進
+	// 前進
 	if(GetAsyncKeyState('W')&0x8000){
 		if(GetKeyState(VK_SHIFT) & 0x8000){		// Shiftキーで高速化
 			RunForward();
@@ -92,7 +112,7 @@ void KeyControl(void)
 		}
 	}
 
-	//後退
+	// 後退
 	if(GetAsyncKeyState('S')&0x8000){
 		if(GetKeyState(VK_SHIFT) & 0x8000){		// Shiftキーで高速化
 			RunBackward();
@@ -101,7 +121,7 @@ void KeyControl(void)
 		}
 	}
 
-	//左
+	// 左
 	if(GetAsyncKeyState('A')&0x8000){
 		if(GetKeyState(VK_SHIFT) & 0x8000){		// Shiftキーで高速化
 			SwingLeft();
@@ -110,7 +130,7 @@ void KeyControl(void)
 		}
 	}
 
-	//右
+	// 右
 	if(GetAsyncKeyState('D')&0x8000){
 		if(GetKeyState(VK_SHIFT) & 0x8000){		// Shiftキーで高速化
 			SwingRight();
@@ -130,18 +150,18 @@ BOOL RenderFrame(void)
 
 	if ( lpPrimary->IsLost() == DDERR_SURFACELOST )		lpPrimary->Restore();
 
-		RECT Scrrc={0, 0, 640, 480};   //画面のサイズ
+		RECT Scrrc={0, 0, 640, 480};   // 画面のサイズ
 
-		//秒間６０フレームを越えないようにする
+		// 秒間６０フレームを越えないようにする
 		static DWORD nowTime, prevTime;
 		nowTime = timeGetTime();
 		if( (nowTime - prevTime) < 1000 / 60 ) return 0;
 		prevTime = nowTime;
 
-		//キー入力
+		// キー入力
 		KeyControl();
 
-		//Direct3DRM レンダリング処理
+		// Direct3DRM レンダリング処理
 		lpD3DRMScene->Move(D3DVAL(1.0)); 
 		lpD3DRMView->Clear();
 
@@ -155,103 +175,187 @@ BOOL RenderFrame(void)
 		//FPS値計測
 		FrameCnt();
 
-		// Flip関数は使わない 画面がちらつく
+		// Flip関数
 		lpPrimary->Flip(NULL, DDFLIP_WAIT);
 
 		return TRUE;
 }
 
 //-------------------------------------------
-// ドライバ検索処理関数
+// Name: BPPToDDBD()
+// BPP(bits per pixel)をDirectDrawのビット深度フラグに変換
 //-------------------------------------------
-GUID* D3D_GuidSearch(HWND hwnd)
+static DWORD BPPToDDBD(int bpp)
 {
-	HRESULT d3dret;   //ダイレクト３Ｄ系関数の戻り値を格納する変数
-	GUID*   Guid;
-	LPDIRECT3D          lpD3D;
-	LPDIRECTDRAW        lpDD;
-	D3DFINDDEVICESEARCH S_DATA;
-	D3DFINDDEVICERESULT R_DATA;
-	char str[100];
 
-	//GUID取得の準備
-	memset(&S_DATA, 0, sizeof S_DATA);
-	S_DATA.dwSize = sizeof S_DATA;
-	S_DATA.dwFlags = D3DFDS_COLORMODEL;
-	S_DATA.dcmColorModel = D3DCOLOR_RGB;
-	memset(&R_DATA, 0, sizeof R_DATA);
-	R_DATA.dwSize = sizeof R_DATA;
-
-	//DIRECTDRAWの生成
-	d3dret = DirectDrawCreate(NULL, &lpDD, NULL);
-	if (d3dret != DD_OK) {
-		MessageBox( hwnd, "ダイレクトドローオブジェクトの生成に失敗しました", "初期化", MB_OK);
-		lpDD->Release();
-		return NULL;
+	switch(bpp) {
+		case 1: return DDBD_1;
+		case 2: return DDBD_2;
+		case 4: return DDBD_4;
+		case 8: return DDBD_8;
+		case 16: return DDBD_16;
+		case 24: return DDBD_24;
+		case 32: return DDBD_32;
+		default: return 0;
 	}
 
-	//DIRECTD3Dの生成
-	d3dret = lpDD->QueryInterface(IID_IDirect3D, (void**)&lpD3D);
-	if (d3dret != D3D_OK) {
-		MessageBox( hwnd, "ダイレクト３Ｄオブジェクトの生成に失敗しました", "初期化", MB_OK);
-		lpDD->Release();
-		lpD3D->Release();
-		return NULL;
-	}
-	//デバイスの列挙
-	d3dret = lpD3D->FindDevice(&S_DATA, &R_DATA);
-	if (d3dret != D3D_OK) {
-		MessageBox( hwnd, "デバイスの列挙に失敗しました", "初期化", MB_OK);
-		lpDD->Release();
-		lpD3D->Release();
-		return NULL;
-	}
-
-	//ガイドの取得
-	Guid = &R_DATA.guid;
-	//不要になったオブジェクトのリリース
-	lpDD->Release();
-	lpD3D->Release();
-	//OutputDebugString(str);
-	wsprintf(str, "%x", *Guid);
-	return (Guid);
 }
 
-/*-------------------------------------------
-// DirectDraw デバイスの列挙と選定
---------------------------------------------*/
-BOOL CALLBACK DDEnumCallback(GUID FAR* lpGUID, LPSTR lpDriverDesc, LPSTR lpDriverName, LPVOID lpContext)
+//-------------------------------------------
+// Name: enumDeviceFunc()
+// Desc: Direct3Dデバイスを列挙するためのコールバック関数
+//       ハードウェアRGB > ハードウェアMono > HEL RGB > HEL Mono の順で優先
+//       (三項演算子を if/else に書き換え)
+//-------------------------------------------
+static HRESULT WINAPI enumDeviceFunc(LPGUID lpGuid, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC lpHWDesc, LPD3DDEVICEDESC lpHELDesc, LPVOID lpContext)
 {
-	LPDIRECTDRAW lpDD;
-	DDCAPS DriverCaps, HELCaps;
 
-	// DirectDraw オブジェクトを試験的に生成する
-	if(DirectDrawCreate(lpGUID, &lpDD, NULL) != DD_OK) {
-		*(LPDIRECTDRAW*)lpContext = NULL;
-		return DDENUMRET_OK;
+	LPD3DDEVICEDESC lpDesc = NULL;
+	bool isHardware = false;
+	bool isMono = false;
+	int* lpCurrentDriverIndex = (int*)lpContext; // 現在選択中のドライバインデックス
+
+	// デバイス記述子の選択 (ハードウェア優先)
+	if (lpHWDesc && lpHWDesc->dcmColorModel != 0) {
+		lpDesc = lpHWDesc;
+		isHardware = true;
+	} else if (lpHELDesc && lpHELDesc->dcmColorModel != 0) {
+		lpDesc = lpHELDesc;
+		isHardware = false;
+	} else {
+		// 有効なデバイス記述子がない場合はスキップ
+		return D3DENUMRET_OK;
 	}
 
-	// DirectDrawの能力を取得
-	ZeroMemory(&DriverCaps, sizeof(DDCAPS));
-	DriverCaps.dwSize = sizeof(DDCAPS);
-	ZeroMemory(&HELCaps, sizeof(DDCAPS));
-	HELCaps.dwSize = sizeof(DDCAPS);
+	// 指定した色深度(BPP)に対応しているかチェック
+	if (!(lpDesc->dwDeviceRenderBitDepth & BPPToDDBD(BPP))) {
+		return D3DENUMRET_OK;
+	}
 
-	if(lpDD->GetCaps(&DriverCaps, &HELCaps) == DD_OK) {
-	// ハードウェア3D支援が期待できる場合で．
-	// なおかつテクスチャが使用できる場合それを使う
-		if ((DriverCaps.dwCaps & DDCAPS_3D) && (DriverCaps.ddsCaps.dwCaps & DDSCAPS_TEXTURE)) {
-			*(LPDIRECTDRAW*)lpContext = lpDD;
-			lstrcpy(szDDDeviceName, lpDriverDesc);
-			return DDENUMRET_CANCEL;
+	// ドライバ情報を配列に記録
+	if (NumDrivers < MAX_DRIVERS) {
+		memcpy(&DriverGUID[NumDrivers], lpGuid, sizeof(GUID));
+		strncpy(DriverName[NumDrivers], lpDeviceDescription, 49);
+		DriverName[NumDrivers][49] = '\0'; // NULL終端保証
+
+		// 優先順位に基づいて CurrDriver を更新
+		isMono = (lpDesc->dcmColorModel & D3DCOLOR_MONO);
+		int currentPriority = 0; // 0: HEL Mono, 1: HEL RGB, 2: HW Mono, 3: HW RGB
+
+		// currentPriority 計算
+		if (isHardware) {
+			// ハードウェアの場合
+			if (isMono) {
+				currentPriority = 2; // HW Mono
+			} else {
+				currentPriority = 3; // HW RGB
+			}
+		} else {
+			// ソフトウェア (HEL) の場合
+			if (isMono) {
+				currentPriority = 0; // HEL Mono
+			} else {
+				currentPriority = 1; // HEL RGB
+			}
+		}
+
+		int selectedPriority = -1; // 選択済みドライバの優先度 (-1 は未選択)
+		if (*lpCurrentDriverIndex != -1) {
+			// 既に選択されているドライバの優先度を DriverName から推測
+			bool selectedIsHardware = false;
+			bool selectedIsMono = false;
+
+			// "(HW)" または "Hardware" が含まれていればハードウェアとみなす
+			if (strstr(DriverName[*lpCurrentDriverIndex], "(HW)") || strstr(DriverName[*lpCurrentDriverIndex], "Hardware")) {
+				selectedIsHardware = true;
+			}
+			// "Mono" が含まれていれば Mono とみなす
+			if (strstr(DriverName[*lpCurrentDriverIndex], "Mono")) {
+				selectedIsMono = true;
+			}
+
+			// selectedPriority 計算
+			if (selectedIsHardware) {
+				if (selectedIsMono) {
+					selectedPriority = 2; // HW Mono
+				} else {
+					selectedPriority = 3; // HW RGB
+				}
+			} else {
+				if (selectedIsMono) {
+					selectedPriority = 0; // HEL Mono
+				} else {
+					selectedPriority = 1; // HEL RGB
+				}
+			}
+		}
+
+		// より優先度の高いドライバが見つかったら更新
+		if (currentPriority > selectedPriority) {
+			*lpCurrentDriverIndex = NumDrivers;
+		}
+
+		NumDrivers++; // 見つかったドライバ数を増やす
+		if (NumDrivers == MAX_DRIVERS) {
+			return D3DENUMRET_CANCEL; // 配列が一杯になったら終了
 		}
 	}
 
-	// 他のドライバを試す
-	*(LPDIRECTDRAW*)lpContext = NULL;
-	lpDD->Release();
+	return D3DENUMRET_OK;
 
-	return DDENUMRET_OK;
+}
+
+//-------------------------------------------
+// Name: EnumDrivers()
+// Desc: 使用可能なDirect3Dドライバを列挙し、最適なものを選択する
+//-------------------------------------------
+static BOOL EnumDrivers()
+{
+
+	LPDIRECTDRAW lpDD_enum = NULL; // 列挙用の一時的なDirectDrawオブジェクト
+	LPDIRECT3D   lpD3D_enum = NULL; // 列挙用の一時的なDirect3Dオブジェクト
+	HRESULT hr;
+
+	// 一時的なDirectDrawオブジェクトを作成
+	hr = DirectDrawCreate(NULL, &lpDD_enum, NULL);
+	if (FAILED(hr)) {
+		MessageBox(NULL, "ドライバ列挙用 DirectDraw 作成失敗", "初期化エラー", MB_OK);
+		return FALSE;
+	}
+
+	// 一時的なDirect3Dインターフェースを取得
+	hr = lpDD_enum->QueryInterface(IID_IDirect3D, (void**)&lpD3D_enum);
+	if (FAILED(hr)) {
+		MessageBox(NULL, "ドライバ列挙用 Direct3D 取得失敗", "初期化エラー", MB_OK);
+		lpDD_enum->Release();
+		return FALSE;
+	}
+
+	// ドライバを列挙して最適なものを選択 (結果はグローバル変数 CurrDriver に格納)
+	NumDrivers = 0; // ドライバ数をリセット
+	CurrDriver = -1; // 選択中ドライバをリセット
+	hr = lpD3D_enum->EnumDevices(enumDeviceFunc, &CurrDriver);
+	if (FAILED(hr)) {
+		MessageBox(NULL, "Direct3D デバイス列挙失敗", "初期化エラー", MB_OK);
+	}
+
+	// 一時オブジェクトを解放
+	lpD3D_enum->Release();
+	lpDD_enum->Release();
+
+	// ドライバが見つからなかったか、選択されなかった場合
+	if (NumDrivers == 0 || CurrDriver == -1) {
+		MessageBox(NULL, "使用可能なDirect3Dドライバが見つかりません。", "初期化エラー", MB_OK);
+		return FALSE;
+	}
+
+	// デバッグ出力に使用するドライバ情報を表示
+	char log[100];
+	sprintf(log, "選択されたドライバ: %d - %s\n", CurrDriver, DriverName[CurrDriver]);
+	OutputDebugString(log);
+
+	return TRUE;
+
 }
 
 LRESULT APIENTRY WndFunc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -398,15 +502,26 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpszCmdParam, int nCm
 		//DirectDrawClipperの構築
 		DirectDrawCreateClipper(0, &lpDDClipper, NULL);
 
-		// DirectDrawドライバを列挙する
-		DirectDrawEnumerate(DDEnumCallback, &lpDirectDraw);
 
-		// 列挙によってDirectDrawドライバを決める
-		// 決定しなかった場合、現在アクティブなドライバを使う
-		if(!lpDirectDraw){
-			lstrcpy(szDDDeviceName, "Active Driver");
-			DirectDrawCreate(NULL, &lpDirectDraw, NULL);
+		// --- DirectDrawオブジェクトの作成 (画面モード設定等のために先に作成) ---
+		// デフォルトのDirectDrawドライバを使用 (NULL を指定)
+		if(FAILED(DirectDrawCreate(NULL, &lpDirectDraw, NULL))) {
+			MessageBox(hwnd, "DirectDrawCreate Fail", "Error", MB_OK);
+			ReleaseAll(); return FALSE;
 		}
+		// とりあえずDirectDrawドライバ名をセット (EnumDriversの結果とは別)
+		lstrcpy(szDDDeviceName, "プライマリ ディスプレイ ドライバ");
+
+		// --- 強調レベルと画面モード設定 ---
+		if (FAILED(lpDirectDraw->SetCooperativeLevel(hwnd, DDSCL_EXCLUSIVE | DDSCL_FULLSCREEN | DDSCL_ALLOWREBOOT))) {
+			MessageBox(hwnd,"SetCooperativeLevel Fail","Error",MB_OK); ReleaseAll(); return FALSE;
+		}
+		// ディスプレイモード変更 (BPP変数を使用)
+		if (FAILED(lpDirectDraw->SetDisplayMode(640, 480, BPP))) {
+			char err[100]; sprintf(err, "%dビット ディスプレイモード設定失敗", BPP);
+			MessageBox(hwnd, err, "初期化エラー", MB_OK); ReleaseAll(); return FALSE;
+		}
+
 
 		lpDirectDraw->SetCooperativeLevel(hwnd, DDSCL_EXCLUSIVE | DDSCL_FULLSCREEN | DDSCL_ALLOWREBOOT);
 
@@ -440,7 +555,6 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpszCmdParam, int nCm
 
 		lpBackbuffer->AddAttachedSurface(lpZbuffer);
 
-/*
 		//DirectDrawでのアクセスもできるように、Clipperをつける
 		struct _MYRGNDATA {
 			RGNDATAHEADER rdh;
@@ -464,7 +578,6 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpszCmdParam, int nCm
 		lpDirectDraw->CreateClipper(0, &lpDDClipper, NULL);
 		lpDDClipper->SetClipList((LPRGNDATA)&rgndata, NULL);
 		lpBackbuffer->SetClipper(lpDDClipper);
-*/
 
 		DDCOLORKEY          ddck;
 
@@ -485,48 +598,34 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR lpszCmdParam, int nCm
 
 		DirectDrawCreateClipper(0, &lpDDClipper, NULL);
 
-//Direct3DRMの初期化 ここから
-
-//デバイスの生成 ＨＥＬ実行 RAMP 低画質 速度遅い
-//		Direct3DRMCreate(&lpDirect3DRM);
-//		lpDirect3DRM->CreateDeviceFromSurface(NULL, lpDirectDraw, lpBackbuffer, &lpD3DRMDevice);
-//
-
-//デバイスの生成 ＨＡＬで実行する
-
-		HRESULT ddret;   //ダイレクト３Ｄ系関数の戻り値を格納する変数
-		GUID*   Guid;
-
-		Direct3DRMCreate(&lpDirect3DRM);
-
-		Guid = D3D_GuidSearch(hwnd);
-		// HAL
-		ddret = lpDirect3DRM->CreateDeviceFromSurface(Guid, (IDirectDraw*)lpDirectDraw, lpBackbuffer, &lpD3DRMDevice);
-			strcpy(szDevice,"D3D HAL");
-		if (ddret != D3DRM_OK) {
-			MessageBox( hwnd, "デバイスの生成に失敗、ＨＡＬでの実行は不可能です", "", MB_OK);
-			//HALでの実行が不可能な時、HELでの実行を行う
-			ddret = lpDirect3DRM->CreateDeviceFromSurface(Guid, (IDirectDraw*)lpDirectDraw, lpBackbuffer, &lpD3DRMDevice);
-			if (ddret != D3DRM_OK) {
-				strcpy(szDevice,"HEL");
-				MessageBox( hwnd, "ＨＥＬでの、デバイスの生成に失敗、Direct3Dの使用は不可能です", "", MB_OK);
-			}
-
-			if(ddret != D3DRM_OK){
-				//MMX
-				ddret = lpDirect3DRM->CreateDeviceFromSurface(Guid, (IDirectDraw*)lpDirectDraw, lpBackbuffer, &lpD3DRMDevice);
-				strcpy(szDevice,"D3D MMX Emulation");
-			}
-
-			if(ddret != D3DRM_OK){
-				//RGB
-				ddret = lpDirect3DRM->CreateDeviceFromSurface(Guid, (IDirectDraw*)lpDirectDraw, lpBackbuffer, &lpD3DRMDevice);
-				strcpy(szDevice,"D3D RGB Emulation");
-			}
+		// --- Direct3Dデバイスの列挙と選択 ---
+		if (!EnumDrivers()) {
+			// エラーメッセージは EnumDrivers 内で表示される
+			ReleaseAll();
+			return FALSE;
 		}
-//
 
-		lpD3DRMDevice->SetQuality(D3DRMLIGHT_ON | D3DRMFILL_SOLID | D3DRMSHADE_GOURAUD);
+		// --- Direct3DRMデバイス作成 ---
+		// EnumDriversで選択されたGUID (DriverGUID[CurrDriver]) を使用する
+		HRESULT ddret = lpDirect3DRM->CreateDeviceFromSurface(
+							&DriverGUID[CurrDriver], // 選択されたドライバのGUID
+							lpDirectDraw,           // 作成済みのDirectDrawオブジェクト
+							lpBackbuffer,
+							&lpD3DRMDevice );
+
+		if (FAILED(ddret)) {
+			char err[200];
+			sprintf(err, "選択されたドライバ(%s)でのRMデバイス作成に失敗しました。", DriverName[CurrDriver]);
+			MessageBox(hwnd, err, "初期化エラー", MB_OK);
+			ReleaseAll(); return FALSE;
+		}
+		// 選択されたDirect3Dデバイス名を szDevice にコピー
+		strncpy(szDevice, DriverName[CurrDriver], sizeof(szDevice) - 1);
+		szDevice[sizeof(szDevice) - 1] = '\0';
+
+
+		// --- デバイス品質設定 ---
+		lpD3DRMDevice->SetQuality(D3DRMFILL_SOLID | D3DRMSHADE_GOURAUD | D3DRMLIGHT_ON);
 
 		lpDirect3DRM->CreateFrame(NULL, &lpD3DRMScene);
 

@@ -1,8 +1,9 @@
 #include <windows.h>
 
 #include <ddraw.h>
-//#include <d3drm.h>
-#include <d3drmwin.h>
+#include <d3drm.h>
+#include <d3d.h>
+//#include <d3drmwin.h>
 #include <mmsystem.h>	//マルチメディア系の制御（timeGetTime()で必要）
 
 #include <math.h>
@@ -34,11 +35,15 @@ extern LPDIRECT3DRMVIEWPORT lpD3DRMView;
 extern LPDIRECT3DRMFRAME lpD3DRMScene;
 extern LPDIRECT3DRMFRAME lpD3DRMCamera;
 
+
+// Desc: BPP(bits per pixel)をDirectDrawのビット深度フラグに変換
+static DWORD BPPToDDBD(int bpp);
+
 // ドライバ検索処理関数
-GUID* D3D_GuidSearch(HWND hwnd);
+static HRESULT WINAPI enumDeviceFunc(LPGUID lpGuid, LPSTR lpDeviceDescription, LPSTR lpDeviceName, LPD3DDEVICEDESC lpHWDesc, LPD3DDEVICEDESC lpHELDesc, LPVOID lpContext);
 
 // DirectDraw デバイスの列挙と選定
-BOOL CALLBACK DDEnumCallback(GUID FAR* lpGUID, LPSTR lpDriverDesc, LPSTR lpDriverName, LPVOID lpContext);
+static BOOL EnumDrivers();
 
 // メッシュなどを作りシーンを作成します
 BOOL BuildScene(void);
